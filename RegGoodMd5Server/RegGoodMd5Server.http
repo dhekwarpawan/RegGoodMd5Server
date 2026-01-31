@@ -1,0 +1,6 @@
+@RegGoodMd5Server_HostAddress = http://localhost:5163
+
+GET {{RegGoodMd5Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
