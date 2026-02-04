@@ -1,5 +1,11 @@
-﻿using MySql.Data.MySqlClient;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
+using Org.BouncyCastle.Crypto;
+using RegGoodMd5.Server.DB_Bridge;
+using RegGoodMd5Server.Models;
 using RegGoodMd5Server.Models.DB_Entities;
+using RegGoodMd5Server.Models.DTOs;
 using RegGoodMd5Server.Repository.Interface;
 using System.Data;
 using static Org.BouncyCastle.Math.EC.ECCurve;
@@ -9,10 +15,11 @@ namespace RegGoodMd5Server.Repository.Services
     public class WormConflictMD5Services : IWormConflictMD5Services
     {
         private readonly string _connectionstring;
-        
-        public WormConflictMD5Services(IConfiguration config)
+        private readonly ApplicationDBContext _db;
+        public WormConflictMD5Services(IConfiguration config, ApplicationDBContext db)
         {
                 _connectionstring = config.GetConnectionString("mycon") ?? throw new InvalidOperationException("Connection string 'mycon' not found.");
+            _db = db;
         }
         public async Task<List<AllMD5Modal>> GetWormConflictMd5()
         {
@@ -138,6 +145,40 @@ namespace RegGoodMd5Server.Repository.Services
 
 
             return list;
+
+        }
+
+
+        public async Task<ApiResponse<string>> UpdateCommentAsync(UpdateComentDto obj)
+        {
+            Wormconflictrows wormconflictrows = new Wormconflictrows();
+            if (obj == null || string.IsNullOrWhiteSpace(obj.Comment))
+                return ApiResponse<string>.Fail("Comment cannot be empty.");
+
+
+            var entity = await _db.wormconflictrows
+                      .FirstOrDefaultAsync(x => x.WCR_ID == obj.Id);
+            if( entity == null)
+            {
+                return ApiResponse<string>.Fail("Record not found.");
+            }
+            entity.Comments = obj.Comment;
+            await _db.SaveChangesAsync();
+            return ApiResponse<string>.Ok(obj.Comment, "Comment updated successfully.");
+
+        }
+
+        public async Task<string> UpdateAnalysis(UpdateAnalysisDto dto)
+        {
+            var data = await _db.wormconflictrows.Where(x => x.WCR_ID == dto.ID).FirstOrDefaultAsync();
+            if (data == null) throw new KeyNotFoundException("Data not found");
+
+            data.whenActionTaken = DateTime.Now;
+            data.analysisComments = dto.analysisComments;
+            data.actionTaken = dto.action ?? 0; 
+            await _db.SaveChangesAsync();
+
+            return "Successfully Update";
 
         }
     }

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RegGoodMd5.Server.DB_Bridge;
+using RegGoodMd5Server.Middelware;
 using RegGoodMd5Server.Repository;
 using RegGoodMd5Server.Repository.Interface;
 using RegGoodMd5Server.Repository.Services;
@@ -124,7 +125,7 @@ app.UseCors("AllowAll");
 //Authentication BEFORE Authorization
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.MapControllers();
 

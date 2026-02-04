@@ -2,8 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
+using MySqlX.XDevAPI.Common;
+using RegGoodMd5.Server.DB_Bridge;
 using RegGoodMd5Server.Models;
 using RegGoodMd5Server.Models.DB_Entities;
+using RegGoodMd5Server.Models.DTOs;
 using RegGoodMd5Server.Repository.Interface;
 using System.Data;
 using System.Net;
@@ -20,19 +23,20 @@ namespace RegGoodMd5Server.Controllers
         private readonly ILogger<DashboardController> _logger;
         private readonly IGoodMd5Service _goodmd5Service;
         private readonly IWormConflictMD5Services _wormconflictmd5Service;
-
-        public MD5DataController(IConfiguration config, ILogger<DashboardController> logger, IGoodMd5Service goodmd5Service, IWormConflictMD5Services wormconflictmd5Service)
+        private readonly ApplicationDBContext _db;
+        public MD5DataController(IConfiguration config, ILogger<DashboardController> logger, IGoodMd5Service goodmd5Service, IWormConflictMD5Services wormconflictmd5Service,ApplicationDBContext db)
         {
             _config = config;
             _logger = logger;
             _goodmd5Service = goodmd5Service;
             _wormconflictmd5Service = wormconflictmd5Service;
+            _db = db;
         }
         [HttpGet]
         [Route("getgoodmd5")]
         public async Task<IActionResult> GetAllGoodMD5()
         {
-            List<AllMD5Modal> listallgd = new List<AllMD5Modal>();   
+            List<AllMD5Modal> listallgd = new List<AllMD5Modal>();
             try
             {
                 listallgd = await _goodmd5Service.GetMD5();
@@ -40,7 +44,7 @@ namespace RegGoodMd5Server.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,"Failed to get data");
+                _logger.LogError(ex, "Failed to get data");
                 throw;
             }
 
@@ -58,26 +62,24 @@ namespace RegGoodMd5Server.Controllers
             try
             {
 
-                string response = await _goodmd5Service.Removemd5Operation(postdata,loginId);
+                string response = await _goodmd5Service.Removemd5Operation(postdata, loginId);
 
-                return Ok(new {message= response});
+                return Ok(new { message = response });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to remove");
                 throw;
             }
-           
+
         }
-
-
 
         [HttpGet]
         [Route("getwormconflictmd5")]
 
         public async Task<IActionResult> GetWormConflictMd5()
         {
-            List<AllMD5Modal> list_wormconflict= new List<AllMD5Modal>();
+            List<AllMD5Modal> list_wormconflict = new List<AllMD5Modal>();
             try
             {
                 list_wormconflict = await _wormconflictmd5Service.GetWormConflictMd5();
@@ -110,6 +112,43 @@ namespace RegGoodMd5Server.Controllers
             }
 
             return Ok(wormconflictrows_basedon_wccid);
+        }
+
+
+        [HttpPost]
+        [Route("updcmt")]
+        public async Task<IActionResult> UpdateComment(UpdateComentDto obj) 
+         {           
+            try
+            {
+                var result = await _wormconflictmd5Service.UpdateCommentAsync(obj);
+                return Ok(result);
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Failed to update data");
+
+                throw;
+            }
+           
+        }
+
+        [HttpPost]
+        [Route("updanlysis")]
+        public async Task<IActionResult> UpdateAnalysis(UpdateAnalysisDto obj)
+        {
+            try
+            {
+                string result = await _wormconflictmd5Service.UpdateAnalysis(obj);
+                return Ok(new { message = result});
+            }
+            catch (Exception)
+            {
+                _logger.LogError("Failed to update data");
+
+                throw;
+            }
+
         }
     }
 }

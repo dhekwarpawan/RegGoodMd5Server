@@ -12,5 +12,6 @@ namespace RegGoodMd5.Server.DB_Bridge
         }
 
         public DbSet<LoginModel> loginModels { get; set; }
+        public DbSet<Wormconflictrows> wormconflictrows { get; set; }
     }
 }
