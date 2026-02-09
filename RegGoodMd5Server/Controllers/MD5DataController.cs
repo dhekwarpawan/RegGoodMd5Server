@@ -150,5 +150,48 @@ namespace RegGoodMd5Server.Controllers
             }
 
         }
+
+        [HttpGet]
+        [Route("allremovedmd5")]
+        public async Task<IActionResult> GetAllRemovedMD5()
+        {
+            List<AllMD5Modal> list = new List<AllMD5Modal>();
+            var result = _goodmd5Service.Fn_GetAllRemovedmd5();
+            return Ok(result);
+        }
+
+        [HttpGet]
+        [Route("showdetails_removed/{id}")]
+        public async Task<IActionResult> ShowDetailsAboutRemovedMd5(int id)
+        {
+            var response = await  _goodmd5Service.GetDetailsofRemovedmd5(id);
+            if (response == null)
+                return NotFound($"No removed MD5 found with id {id}");
+            return Ok(new
+            {
+                regGMD5_ID = response.Value.regGMD5_ID,
+                rmd5 = response.Value.rmd5,
+                filename = response.Value.filename,
+                addedDate = response.Value.addedDate,
+                addedByIP = response.Value.addedByIP,
+                info_comments = response.Value.info_comments,
+                reason = response.Value.reason,
+                name = response.Value.name
+
+
+            });
+        }
+
+        [HttpPost]
+        [Route("movegood")]
+        public async Task<IActionResult> MoveRmd5ToGood(MoveRmd5ToGoodDto postdata)
+        {
+            string? loginId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (loginId == null)
+                return Unauthorized();
+
+            string response = await _goodmd5Service.Fn_MovedToGood(postdata, loginId);
+            return Ok(new { message = response });
+        } 
     }
 }
