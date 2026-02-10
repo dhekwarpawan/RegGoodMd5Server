@@ -9,5 +9,7 @@
         public int regGMD5_ID { get; set; }
         public int reasonID { get; set; }
 
+        public int LoginID { get; set; }
+
     }
 }

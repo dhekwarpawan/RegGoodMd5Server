@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
+using Org.BouncyCastle.Tls;
 using RegGoodMd5.Server.DB_Bridge;
 using RegGoodMd5.Server.Models.Db_model;
 using RegGoodMd5Server.Models;
@@ -233,14 +234,14 @@ namespace RegGoodMd5Server.Repository.Services
 
 
 
-        public async Task<string> Fn_MovedToGood(MoveRmd5ToGoodDto data,string loginid)
+        public async Task<string> Fn_MovedToGood(MoveRmd5ToGoodDto data)
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName()); // `Dns.Resolve()` method is deprecated.
             IPAddress ipAddress = ipHostInfo.AddressList[1];
             var goodmd5_master = await _db.goodmdmaster.FirstOrDefaultAsync(x => x.regGMD5_ID == data.regGMD5_ID);
             if (goodmd5_master != null)
             {
-                goodmd5_master.LoginID = Convert.ToInt32(loginid);
+                goodmd5_master.LoginID = data.Loginid;
                 goodmd5_master.addedByIP = ipAddress.ToString();
                 goodmd5_master.info_comments = data.moveReason;
                 goodmd5_master.removed = false;

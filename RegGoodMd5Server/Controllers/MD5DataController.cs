@@ -12,6 +12,8 @@ using System.Data;
 using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.SignalR;
+using RegGoodMd5Server.Hubs;
 
 namespace RegGoodMd5Server.Controllers
 {
@@ -24,13 +26,17 @@ namespace RegGoodMd5Server.Controllers
         private readonly IGoodMd5Service _goodmd5Service;
         private readonly IWormConflictMD5Services _wormconflictmd5Service;
         private readonly ApplicationDBContext _db;
-        public MD5DataController(IConfiguration config, ILogger<DashboardController> logger, IGoodMd5Service goodmd5Service, IWormConflictMD5Services wormconflictmd5Service,ApplicationDBContext db)
+        private readonly IHubContext<DataHub> _hubContext;
+        private readonly NotifyClientSingnalR _notifyClientSingnalR;
+        public MD5DataController(IConfiguration config, ILogger<DashboardController> logger, IGoodMd5Service goodmd5Service, IWormConflictMD5Services wormconflictmd5Service,ApplicationDBContext db, IHubContext<DataHub> hubContext)
         {
             _config = config;
             _logger = logger;
             _goodmd5Service = goodmd5Service;
             _wormconflictmd5Service = wormconflictmd5Service;
             _db = db;
+            _hubContext = hubContext;
+            _notifyClientSingnalR = new NotifyClientSingnalR(_hubContext);
         }
         [HttpGet]
         [Route("getgoodmd5")]
@@ -122,6 +128,12 @@ namespace RegGoodMd5Server.Controllers
             try
             {
                 var result = await _wormconflictmd5Service.UpdateCommentAsync(obj);
+                await _hubContext.Clients.All.SendAsync(
+                    "dataChanged",  
+                    "WormConflict", 
+                    "Update",           
+                    obj.Id   
+                );
                 return Ok(result);
             }
             catch (Exception)
@@ -186,12 +198,19 @@ namespace RegGoodMd5Server.Controllers
         [Route("movegood")]
         public async Task<IActionResult> MoveRmd5ToGood(MoveRmd5ToGoodDto postdata)
         {
-            string? loginId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (loginId == null)
-                return Unauthorized();
+            if (postdata == null)
+                throw new ApplicationException("Request body cannot be empty.");
 
-            string response = await _goodmd5Service.Fn_MovedToGood(postdata, loginId);
-            return Ok(new { message = response });
+            string response = await _goodmd5Service.Fn_MovedToGood(postdata);
+            await _notifyClientSingnalR.NotifyClientsAsync("RemovedToMove", "", 1);
+
+            //await _hubContext.Clients.All.SendAsync("dataChanged", new
+            //{
+            //    entity = "RemovedToMove",
+            //    action = "Moved",
+            //    id = postdata.regGMD5_ID
+            //});
+            return Ok(new { success = true, message = response });
         } 
     }
 }

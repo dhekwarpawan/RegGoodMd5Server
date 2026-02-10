@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RegGoodMd5.Server.DB_Bridge;
+using RegGoodMd5Server.Hubs;
 using RegGoodMd5Server.Middelware;
 using RegGoodMd5Server.Repository;
 using RegGoodMd5Server.Repository.Interface;
@@ -11,24 +12,46 @@ using Serilog;
 using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        policy => policy.AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowAnyOrigin());
-});
+
+
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+
 //builder.Services.AddControllers().AddJsonOptions(options => { options.JsonSerializerOptions.IncludeFields = true}); [Note :-  This is used when we passing data as tuple so it is used for serialized which help to pass to api]
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+
+builder.Services.AddSignalR();
+builder.Services.AddScoped<NotifyClientSingnalR>();
+
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularDevPolicy", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrEmpty(origin)) return false;
+
+                var uri = new Uri(origin);
+                return uri.Host == "localhost"; // allow any localhost port
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
+
+
 
 builder.Services.AddDbContext<ApplicationDBContext>(option => option.UseMySQL(builder.Configuration.GetConnectionString("mycon")!));
 
@@ -38,7 +61,8 @@ builder.Services.AddScoped<IWormConflictMD5Services, WormConflictMD5Services>();
 builder.Services.AddScoped<IRemovedMD5Services, RemovedMD5Services>();
 
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options => {
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -105,10 +129,12 @@ builder.Services.AddSwaggerGen(options =>
 
 
 
-builder.Host.UseSerilog((ctx,lc)=>lc.WriteTo.Console().WriteTo.File("Logs/app-log-.txt", rollingInterval: RollingInterval.Day));
+builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.Console().WriteTo.File("Logs/app-log-.txt", rollingInterval: RollingInterval.Day));
 
 
 var app = builder.Build();
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -117,20 +143,22 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-
-//CORS MUST BE HERE
-app.UseCors("AllowAll");
-
-//Authentication BEFORE Authorization
-app.UseAuthentication();
-app.UseAuthorization();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
+
+app.UseHttpsRedirection();
+
+app.UseRouting();                  // add this
+
+app.UseCors("AngularDevPolicy");   // CORS AFTER routing, BEFORE auth
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapHub<DataHub>("/datahub");
 app.MapControllers();
 
-app.MapFallbackToFile("index.html");
 
+app.MapFallbackToFile("index.html");
 
 app.Run();

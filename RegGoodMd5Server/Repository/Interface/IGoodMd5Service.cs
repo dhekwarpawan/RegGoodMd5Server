@@ -15,6 +15,6 @@ namespace RegGoodMd5Server.Repository.Interface
         // Below method uses tuple for return data
         Task<(int? regGMD5_ID, string? rmd5, string filename, DateTime? addedDate, string? addedByIP, string info_comments, string reason, string name)?> GetDetailsofRemovedmd5(int id);
 
-        Task<string> Fn_MovedToGood(MoveRmd5ToGoodDto data,string loginid);
+        Task<string> Fn_MovedToGood(MoveRmd5ToGoodDto data);
     }
 }
