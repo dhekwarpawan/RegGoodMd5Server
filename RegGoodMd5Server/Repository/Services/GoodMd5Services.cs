@@ -111,12 +111,10 @@ namespace RegGoodMd5Server.Repository.Services
             return listallgd;
         }
 
-
         public async Task<string> Removemd5Operation(RemoveMd5PostData postdata, string loginId)
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName()); // `Dns.Resolve()` method is deprecated.
             IPAddress ipAddress = ipHostInfo.AddressList[1];
-
             try
             {
                 var con = new MySqlConnection(_connectionString);

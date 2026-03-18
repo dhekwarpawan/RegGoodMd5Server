@@ -1,19 +1,21 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 using MySqlX.XDevAPI.Common;
 using RegGoodMd5.Server.DB_Bridge;
+using RegGoodMd5Server.Hubs;
 using RegGoodMd5Server.Models;
 using RegGoodMd5Server.Models.DB_Entities;
+using RegGoodMd5Server.Models.Db_model;
 using RegGoodMd5Server.Models.DTOs;
 using RegGoodMd5Server.Repository.Interface;
 using System.Data;
 using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.SignalR;
-using RegGoodMd5Server.Hubs;
 
 namespace RegGoodMd5Server.Controllers
 {
@@ -77,7 +79,6 @@ namespace RegGoodMd5Server.Controllers
                 _logger.LogError(ex, "Failed to remove");
                 throw;
             }
-
         }
 
         [HttpGet]
@@ -96,7 +97,6 @@ namespace RegGoodMd5Server.Controllers
                 _logger.LogError(ex, "Failed to get data");
                 throw;
             }
-
             return Ok(list_wormconflict);
         }
 
@@ -141,8 +141,7 @@ namespace RegGoodMd5Server.Controllers
                 _logger.LogError("Failed to update data");
 
                 throw;
-            }
-           
+            } 
         }
 
         [HttpPost]
@@ -160,7 +159,6 @@ namespace RegGoodMd5Server.Controllers
 
                 throw;
             }
-
         }
 
         [HttpGet]
@@ -168,7 +166,7 @@ namespace RegGoodMd5Server.Controllers
         public async Task<IActionResult> GetAllRemovedMD5()
         {
             List<AllMD5Modal> list = new List<AllMD5Modal>();
-            var result = _goodmd5Service.Fn_GetAllRemovedmd5();
+            var result = await _goodmd5Service.Fn_GetAllRemovedmd5();
             return Ok(result);
         }
 
@@ -189,8 +187,6 @@ namespace RegGoodMd5Server.Controllers
                 info_comments = response.Value.info_comments,
                 reason = response.Value.reason,
                 name = response.Value.name
-
-
             });
         }
 
@@ -211,6 +207,71 @@ namespace RegGoodMd5Server.Controllers
             //    id = postdata.regGMD5_ID
             //});
             return Ok(new { success = true, message = response });
-        } 
+        }
+
+
+
+        [HttpGet]
+        [Route("filename")]
+        public async Task<IActionResult> GetFilename()
+        {
+            List<Object> ddf = new List<object>();
+            var filenames = await _db.md5filenamemaster.OrderByDescending(x => x.FNm_ID).Select(x => x.Filename).ToListAsync();
+            var reason = await _db.reasonmaster.OrderByDescending(x => x.reason).Select(x => x.reason).ToListAsync();
+            ddf.Add(filenames);
+            ddf.Add(reason);
+            return Ok(ddf);
+        }
+
+        [HttpPost]
+        [Route("addreason")]
+        public async Task<IActionResult> AddReason(ReasonRequestPostData request)
+        {
+            if(string.IsNullOrEmpty(request.reason))
+            {
+                return BadRequest(new { status = false, message = "Reason is required" });
+            }
+            try
+            {
+                reasonmaster reason1 = new reasonmaster();
+                var result = await _db.reasonmaster.FirstOrDefaultAsync(pratik => pratik.reason == request.reason);
+                if( result != null) return Ok(new { status = false, message = "Reason Already Present" });
+
+                var reason = new reasonmaster
+                {
+                  reason = request.reason,
+                  inDate = DateTime.Now
+                };
+
+               
+                await _db.reasonmaster.AddAsync(reason);
+                await _db.SaveChangesAsync();
+                // 🔔 Notify via SignalR (non-blocking safe)
+                try
+                {
+                    await _notifyClientSingnalR.NotifyClientsAsync("ReasonAdded", reason.reason, 1);
+
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"SignalR Error: {ex.Message}");
+
+                    throw;
+                   
+                }
+
+                return Ok(new { status = true, message = "Reason Added" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = "Something went wrong",
+                    error = ex.Message
+                });
+            }
+            
+        }
     }
 }

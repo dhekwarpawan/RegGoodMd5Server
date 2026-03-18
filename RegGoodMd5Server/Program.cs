@@ -63,7 +63,6 @@ builder.Services.AddScoped<IRemovedMD5Services, RemovedMD5Services>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
-
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
